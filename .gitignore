@@ -1,0 +1,4 @@
+env/
+src/config.py
+*.pyc
+script.sh
