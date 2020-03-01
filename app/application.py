@@ -21,14 +21,6 @@ def static_proxy(path):
     file_name = path.split("/")[-1]
     dir_name = os.path.join(app.static_folder, "/".join(path.split("/")[:-1]))
     return send_from_directory(dir_name, file_name)
-# Serve React App
-# @app.route('/', defaults={'path': ''})
-# @app.route('/<path:path>')
-# def serve(path):
-#     if path != "" and os.path.exists(app.static_folder + '/' + path):
-#         return send_from_directory(app.static_folder, path)
-#     else:
-#         return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/api/v1/stan', methods=['GET'])
 def index():
@@ -101,7 +93,7 @@ def post_ciasto():
         cukier_db.zuzyte = zuzyte
         ciasto_dane['waga'] += zuzyte
         ciasto_dane['cena_sumaryczna'] += zuzyte*cukier_db.cena
-        ciasto_dane['cukier'] = [{'id': x.get('db').id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['cukier']]
+    ciasto_dane['cukier']  = [{'id': x['db'].id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['cukier']]
     # edytowanie ciasta, powinno byc :
     # revertem dodawania
     # tworzeniem nowego
@@ -113,7 +105,7 @@ def post_ciasto():
         syrop_db.zuzyte = zuzyte
         ciasto_dane['waga'] += zuzyte
         ciasto_dane['cena_sumaryczna'] += zuzyte*syrop_db.cena
-        ciasto_dane['syrop'] = [{'id': x.get('db').id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['syrop']]
+    ciasto_dane['syrop'] = [{'id': x['db'].id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['syrop']]
 
     for ziola in ciasto_dane['ziola']:
         ziola_db = ziola.get('db')
@@ -123,7 +115,7 @@ def post_ciasto():
         ziola_db.zuzyte = zuzyte
         ciasto_dane['waga'] += zuzyte
         ciasto_dane['cena_sumaryczna'] += zuzyte*ziola_db.cena
-        ciasto_dane['ziola'] = [{'id': x.get('db').id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['ziola']]
+    ciasto_dane['ziola'] = [{'id': x['db'].id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['ziola']]
 
     ciasto = Ciasto(
         partia = data['partia'],
@@ -153,8 +145,8 @@ def get_ciasto():
 @app.route('/api/v1/ciasto/<int:ciasto_id>', methods=['DELETE'])
 def delete_ciasto(ciasto_id):
     ciasto = Ciasto.query.get(ciasto_id)
-    # import pdb; pdb.set_trace()
     for cukier in json.loads(ciasto.cukier):
+        _db = Cukier.query.get(cukier.get('id'))
         _db.zuzyte -= cukier.get('zuzyte')
         _db.stan += cukier.get('zuzyte')
     for syrop in json.loads(ciasto.syrop):
