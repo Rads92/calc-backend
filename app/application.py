@@ -155,10 +155,6 @@ def delete_ciasto(ciasto_id):
     ciasto = Ciasto.query.get(ciasto_id)
     # import pdb; pdb.set_trace()
     for cukier in json.loads(ciasto.cukier):
-        print(type(ciasto.cukier))
-        import pdb; pdb.set_trace()
-        print(ciasto.cukier)
-        _db = Cukier.query.get(cukier.get('id'))
         _db.zuzyte -= cukier.get('zuzyte')
         _db.stan += cukier.get('zuzyte')
     for syrop in json.loads(ciasto.syrop):
