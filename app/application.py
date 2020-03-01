@@ -1,13 +1,17 @@
 #!flask/bin/python
 from flask import Flask, jsonify, request, abort
-from app.config import Config
+from config import Config
 from app import app, db
-from app.models import Cukier, Syrop, Ziola, Ciasto
+from models import Cukier, Syrop, Ziola, Ciasto
 import json
 import math as m
 
 ### TODO LIST:
     # obsluga bledow
+
+@app.route('/')
+def welcome():
+    return "Welcome"
 
 @app.route('/api/v1/stan', methods=['GET'])
 def index():
@@ -16,11 +20,9 @@ def index():
     ziola = Ziola.query.all()
 
     return jsonify({
-            'data': {
-                'cukier': [c.as_dict() for c in cukier],
-                'syrop': [c.as_dict() for c in syrop],
-                'ziola': [c.as_dict() for c in ziola],
-            }
+            'cukier': [c.as_dict() for c in cukier],
+            'syrop': [c.as_dict() for c in syrop],
+            'ziola': [c.as_dict() for c in ziola],
         })
 
 ### CIASTO
@@ -45,7 +47,7 @@ def post_ciasto():
             # { cala instancja ziola + pole 'zuzyte'}
         ],
     }
-
+    ## Walidacja
     cukier = data['cukier']
     for c in cukier:
         c_db = Cukier.query.get(c.get('id'))
@@ -72,36 +74,48 @@ def post_ciasto():
             abort(400, description="Nie ma takiej ilosci na stanie")
 
         ciasto_dane['ziola'].append({'db': c_db, 'zuzyte': c.get('zuzyte')})
+    ## Walidacja Koniec
 
     for cukier in ciasto_dane['cukier']:
         cukier_db = cukier.get('db')
         zuzyte = cukier.get('zuzyte')
         stan_obecny = cukier_db.stan - zuzyte
         cukier_db.stan = stan_obecny
+        cukier_db.zuzyte = zuzyte
         ciasto_dane['waga'] += zuzyte
         ciasto_dane['cena_sumaryczna'] += zuzyte*cukier_db.cena
-
+        ciasto_dane['cukier'] = [{'id': x.get('db').id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['cukier']]
+    # edytowanie ciasta, powinno byc :
+    # revertem dodawania
+    # tworzeniem nowego
     for syrop in ciasto_dane['syrop']:
         syrop_db = syrop.get('db')
         zuzyte = syrop.get('zuzyte')
         stan_obecny = syrop_db.stan - zuzyte
         syrop_db.stan = stan_obecny
+        syrop_db.zuzyte = zuzyte
         ciasto_dane['waga'] += zuzyte
         ciasto_dane['cena_sumaryczna'] += zuzyte*syrop_db.cena
+        ciasto_dane['syrop'] = [{'id': x.get('db').id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['syrop']]
 
     for ziola in ciasto_dane['ziola']:
         ziola_db = ziola.get('db')
         zuzyte = ziola.get('zuzyte')
         stan_obecny = ziola_db.stan - zuzyte
         ziola_db.stan = stan_obecny
+        ziola_db.zuzyte = zuzyte
         ciasto_dane['waga'] += zuzyte
         ciasto_dane['cena_sumaryczna'] += zuzyte*ziola_db.cena
+        ciasto_dane['ziola'] = [{'id': x.get('db').id, 'zuzyte': x.get('zuzyte')} for x in ciasto_dane['ziola']]
 
     ciasto = Ciasto(
         partia = data['partia'],
         ilosc = ciasto_dane['waga'],
         stan = ciasto_dane['waga'],
-        cena = m.floor(ciasto_dane['cena_sumaryczna']/ciasto_dane['waga']),
+        cukier = json.dumps(ciasto_dane['cukier']),
+        syrop = json.dumps(ciasto_dane['syrop']),
+        ziola = json.dumps(ciasto_dane['ziola']),
+        cena = m.floor(ciasto_dane['cena_sumaryczna']/ciasto_dane['waga'] * 100)/ 100.0,
     )
     db.session.add(ciasto)
     db.session.commit()
@@ -110,6 +124,47 @@ def post_ciasto():
             'ciasto': [c.as_dict() for c in ciasto],
         })
 
+@app.route('/api/v1/ciasto', methods=['GET'])
+def get_ciasto():
+    ciasto = Ciasto.query.all()
+
+    return jsonify({
+            'ciasto': [c.as_dict() for c in ciasto],
+        })
+
+# odwrotnosc dodania - przywrocenie cukru/syropu/ziol
+@app.route('/api/v1/ciasto/<int:ciasto_id>', methods=['DELETE'])
+def delete_ciasto(ciasto_id):
+    ciasto = Ciasto.query.get(ciasto_id)
+    print(ciasto)
+    # import pdb; pdb.set_trace()
+    for cukier in json.loads(ciasto.cukier):
+        print(type(ciasto.cukier))
+        import pdb; pdb.set_trace()
+        print(ciasto.cukier)
+        _db = Cukier.query.get(cukier.get('id'))
+        _db.zuzyte -= cukier.get('zuzyte')
+        _db.stan += cukier.get('zuzyte')
+    for syrop in json.loads(ciasto.syrop):
+        _db = Syrop.query.get(syrop.get('id'))
+        _db.zuzyte -= syrop.get('zuzyte')
+        _db.stan += syrop.get('zuzyte')
+    for ziola in json.loads(ciasto.ziola):
+        _db = Ziola.query.get(ziola.get('id'))
+        _db.zuzyte -= ziola.get('zuzyte')
+        _db.stan += ziola.get('zuzyte')
+    db.session.delete(ciasto)
+    db.session.commit()
+    # (Pdb) ciasto.cukier
+    # '[{"id": 1, "zuzyte": 10}]'
+    # (Pdb) ciasto.ziola
+    # '[{"id": 1, "zuzyte": 10}]'
+    # (Pdb) ciasto.syrop
+    # '[{"id": 1, "zuzyte": 10}]'
+    ciasto = Ciasto.query.all();
+    return jsonify({
+            'ciasto': [c.as_dict() for c in ciasto],
+        })
 
 ### CUKIER
 @app.route('/api/v1/cukier', methods=['GET'])
