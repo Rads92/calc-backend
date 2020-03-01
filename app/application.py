@@ -1,17 +1,34 @@
 #!flask/bin/python
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request, abort, send_from_directory
 from config import Config
 from app import app, db
 from models import Cukier, Syrop, Ziola, Ciasto
 import json
+import os
 import math as m
 
 ### TODO LIST:
     # obsluga bledow
 
 @app.route('/')
-def welcome():
-    return "Welcome"
+def render_react():
+    return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route("/<path:path>")
+def static_proxy(path):
+    """static folder serve"""
+    file_name = path.split("/")[-1]
+    dir_name = os.path.join(app.static_folder, "/".join(path.split("/")[:-1]))
+    return send_from_directory(dir_name, file_name)
+# Serve React App
+# @app.route('/', defaults={'path': ''})
+# @app.route('/<path:path>')
+# def serve(path):
+#     if path != "" and os.path.exists(app.static_folder + '/' + path):
+#         return send_from_directory(app.static_folder, path)
+#     else:
+#         return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/api/v1/stan', methods=['GET'])
 def index():
@@ -136,7 +153,6 @@ def get_ciasto():
 @app.route('/api/v1/ciasto/<int:ciasto_id>', methods=['DELETE'])
 def delete_ciasto(ciasto_id):
     ciasto = Ciasto.query.get(ciasto_id)
-    print(ciasto)
     # import pdb; pdb.set_trace()
     for cukier in json.loads(ciasto.cukier):
         print(type(ciasto.cukier))
