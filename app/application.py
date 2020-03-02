@@ -10,18 +10,6 @@ import math as m
 ### TODO LIST:
     # obsluga bledow
 
-@app.route('/')
-def render_react():
-    return send_from_directory(app.static_folder, "index.html")
-
-
-@app.route("/<path:path>")
-def static_proxy(path):
-    """static folder serve"""
-    file_name = path.split("/")[-1]
-    dir_name = os.path.join(app.static_folder, "/".join(path.split("/")[:-1]))
-    return send_from_directory(dir_name, file_name)
-
 @app.route('/api/v1/stan', methods=['GET'])
 def index():
     cukier = Cukier.query.all()
@@ -284,6 +272,21 @@ def delete_ziola(ziola_id):
     return jsonify({
             'ziola': [c.as_dict() for c in ziola],
         })
+
+@app.route("/calc-frontend/<path:path>")
+def static_proxy(path):
+    """static folder serve"""
+
+    path = "calc-frontend/" + path
+    file_name = path.split("/")[-1]
+    dir_name = os.path.join(app.static_folder, "/".join(path.split("/")[:-1]))
+    return send_from_directory(dir_name, file_name)
+
+@app.route('/<path:path>')
+def render_react(path):
+    return send_from_directory(app.static_folder, "index.html")
+
+
 
 
 if __name__ == '__main__':
